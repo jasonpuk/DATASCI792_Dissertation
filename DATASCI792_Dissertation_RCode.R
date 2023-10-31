@@ -38,8 +38,8 @@ footfall_one = function(file, ghl = 9){
       filter(Latitude >= -37.2 & Latitude <= -36.53 & 
                Longitude >= 174.44 & Longitude <= 175.14) |>
       mutate(DateTime = as.Date(DateTime),
-             GeoHash = substr(GeoHash, 1, ghl)))
-  
+             GeoHash = substr(GeoHash, 1, ghl))) 
+
   # get date
   Date = unique(unlist(df_var$DateTime))
   
@@ -47,12 +47,14 @@ footfall_one = function(file, ghl = 9){
   df_total = df_var |> 
     group_by(GeoHash) |> 
     summarise(total_cnt = n()) 
+  print(df_total)
   
   # get the total count per device ID and geohash (i.e. unqie device count)
   df_unique = df_var |> 
     distinct(ID, GeoHash) |>
     group_by(GeoHash) |> 
     summarise(unique_cnt = n()) 
+  print(df_unique)
   
   # combine the above two results and return
   tibble(Date, suppressMessages(inner_join(df_total, df_unique)))
@@ -111,7 +113,7 @@ footfall_with_gf = function(year, month, ghl = 9, width = 2){
 ## Appendix A.3 -- Retail Aggregation
 
 ### Function 1
-retail_df = function(yymmdd){
+retail_df = function(yymmdd, ghl = 9){
   ## obtain a list of the desired retail property types for further analysis
   is_retail = suppressMessages(
     read_csv("retail_property_types.csv",col_select = 1:2) |>
@@ -131,7 +133,7 @@ retail_df = function(yymmdd){
     filter(lat >= -37.2 & lat <= -36.53 & 
              lon >= 174.44 & lon <= 175.14) |>
     filter(type %in% is_retail) |>
-    mutate(GeoHash = gh_encode(lat, lon, 9L))
+    mutate(GeoHash = gh_encode(lat, lon, ghl))
   
   ## parse POI_area to a tibble
   poi_a = read_sf(dsn = paste0("new-zealand-", yymmdd, "-free"), 
@@ -145,7 +147,7 @@ retail_df = function(yymmdd){
     filter(lat >= -37.2 & lat <= -36.53 & 
              lon >= 174.44 & lon <= 175.14) |>
     filter(type %in% is_retail) |>
-    mutate(GeoHash = gh_encode(lat, lon, 9L))
+    mutate(GeoHash = gh_encode(lat, lon, ghl))
   
   ## merge two tibbles together
   as_tibble(rbind(df_poi, df_poi_a))
@@ -161,7 +163,7 @@ retail_gf = function(df, width = 2){
   
   # similar to footfall_gf function, only different aggregation method
   for (w in 0:width){
-    gf = vgf(df$GeoHash, width = w)
+    gf = vgeofence(df$GeoHash, width = w)
     t = pivot_longer(gf, cols = everything(), names_to = "Count", values_to = "GeoHash")
     df_temp = suppressMessages(left_join(t, temp))
     df_w = df_temp |> 
@@ -208,4 +210,3 @@ convert_to_shp = function(df, convert = FALSE, filename = ""){
   if (convert) st_write(shp_obj, filename)
   shp_obj
 }
-
